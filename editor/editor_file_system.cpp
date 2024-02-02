@@ -394,6 +394,7 @@ bool EditorFileSystem::_test_for_reimport(const String &p_path, bool p_only_impo
 	String importer_name;
 	String source_file = "";
 	String source_md5 = "";
+	String path_basename = "";
 	Vector<String> dest_files;
 	String dest_md5 = "";
 	int version = 0;
@@ -414,6 +415,7 @@ bool EditorFileSystem::_test_for_reimport(const String &p_path, bool p_only_impo
 
 		if (!assign.is_empty()) {
 			if (assign.begins_with("path")) {
+				path_basename = ((String)value).get_basename();
 				to_check.push_back(value);
 			} else if (assign == "files") {
 				Array fa = value;
@@ -458,7 +460,13 @@ bool EditorFileSystem::_test_for_reimport(const String &p_path, bool p_only_impo
 	}
 
 	// Read the md5's from a separate file (so the import parameters aren't dependent on the file version
-	String base_path = ResourceFormatImporter::get_singleton()->get_import_base_path(p_path);
+	String base_path;
+	if (path_basename.is_empty()) {
+		base_path = ResourceFormatImporter::get_singleton()->get_import_base_path(p_path);
+	} else {
+		base_path = path_basename;
+	}
+
 	Ref<FileAccess> md5s = FileAccess::open(base_path + ".md5", FileAccess::READ, &err);
 	if (md5s.is_null()) { // No md5's stored for this resource
 		return true;
@@ -1878,7 +1886,16 @@ Error EditorFileSystem::_reimport_group(const String &p_group_file, const Vector
 			}
 		}
 
-		base_paths[p_files[i]] = ResourceFormatImporter::get_singleton()->get_import_base_path(p_files[i]);
+		String path_basename;
+		if (config->has_section_key("remap", "path")) {
+			path_basename = ((String)config->get_value("remap", "path")).get_basename();
+		}
+
+		if (path_basename.is_empty()) {
+			base_paths[p_files[i]] = ResourceFormatImporter::get_singleton()->get_import_base_path(p_files[i]);
+		} else {
+			base_paths[p_files[i]] = path_basename;
+		}
 	}
 
 	if (importer_name == "keep") {
@@ -1894,7 +1911,7 @@ Error EditorFileSystem::_reimport_group(const String &p_group_file, const Vector
 	//all went well, overwrite config files with proper remaps and md5s
 	for (const KeyValue<String, HashMap<StringName, Variant>> &E : source_file_options) {
 		const String &file = E.key;
-		String base_path = ResourceFormatImporter::get_singleton()->get_import_base_path(file);
+		String base_path = base_paths[file];
 		Vector<String> dest_paths;
 		ResourceUID::ID uid = uids[file];
 		{
@@ -2036,6 +2053,7 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 		generator_parameters = *p_generator_parameters;
 	}
 
+	String path_basename;
 	if (FileAccess::exists(p_file + ".import")) {
 		//use existing
 		Ref<ConfigFile> cf;
@@ -2066,6 +2084,10 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 					if (cf->has_section_key("remap", "generator_parameters")) {
 						generator_parameters = cf->get_value("remap", "generator_parameters");
 					}
+				}
+
+				if (cf->has_section_key("remap", "path")) {
+					path_basename = ((String)cf->get_value("remap", "path")).get_basename();
 				}
 			}
 		}
@@ -2124,7 +2146,12 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 	}
 
 	//finally, perform import!!
-	String base_path = ResourceFormatImporter::get_singleton()->get_import_base_path(p_file);
+	String base_path;
+	if (path_basename.is_empty() || !DirAccess::dir_exists_absolute(path_basename.get_base_dir())) {
+		base_path = ResourceFormatImporter::get_singleton()->get_import_base_path(p_file);
+	} else {
+		base_path = path_basename;
+	}
 
 	List<String> import_variants;
 	List<String> gen_files;
