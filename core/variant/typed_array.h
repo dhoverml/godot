@@ -65,21 +65,14 @@ struct VariantInternalAccessor<T, EnableIf_t<types_are_same_v<TypedArray<typenam
 };
 
 template <class T>
-struct PtrToArg<TypedArray<T>> {
-	_FORCE_INLINE_ static TypedArray<T> convert(const void *p_ptr) {
-		return TypedArray<T>(*reinterpret_cast<const Array *>(p_ptr));
+struct PtrToArg<T, EnableIf_t<types_are_same_v<TypedArray<typename RemoveRefPointerConst_t<T>::Type>, RemoveRefPointerConst_t<T>>>> {
+	typedef RemoveRefPointerConst_t<T> TStripped;
+	_FORCE_INLINE_ static TStripped convert(const void *p_ptr) {
+		return TStripped(*reinterpret_cast<const Array *>(p_ptr));
 	}
 	typedef Array EncodeT;
-	_FORCE_INLINE_ static void encode(TypedArray<T> p_val, void *p_ptr) {
+	_FORCE_INLINE_ static void encode(TStripped p_val, void *p_ptr) {
 		*(Array *)p_ptr = p_val;
-	}
-};
-
-template <class T>
-struct PtrToArg<const TypedArray<T> &> {
-	typedef Array EncodeT;
-	_FORCE_INLINE_ static TypedArray<T> convert(const void *p_ptr) {
-		return TypedArray<T>(*reinterpret_cast<const Array *>(p_ptr));
 	}
 };
 

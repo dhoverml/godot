@@ -169,7 +169,7 @@ public:
 
 	template <class T_Other>
 	Ref(const Ref<T_Other> &p_from) {
-		RefCounted *refb = const_cast<RefCounted *>(static_cast<const RefCounted *>(p_from.ptr()));
+		RefCounted *refb = const_cast<RefCounted *>(reinterpret_cast<const RefCounted *>(p_from.ptr()));
 		if (!refb) {
 			unref();
 			return;
@@ -242,33 +242,21 @@ public:
 };
 
 template <class T>
-struct PtrToArg<Ref<T>> {
-	_FORCE_INLINE_ static Ref<T> convert(const void *p_ptr) {
+struct PtrToArg<T, EnableIf_t<types_are_same_v<Ref<typename RemoveRefPointerConst_t<T>::Type>, RemoveRefPointerConst_t<T>>>> {
+	typedef typename RemoveRefPointerConst_t<T>::Type TStripped;
+	_FORCE_INLINE_ static Ref<TStripped> convert(const void *p_ptr) {
 		if (p_ptr == nullptr) {
-			return Ref<T>();
+			return Ref<TStripped>();
 		}
 		// p_ptr points to a RefCounted object
-		return Ref<T>(const_cast<T *>(*reinterpret_cast<T *const *>(p_ptr)));
+		return Ref<TStripped>(const_cast<TStripped *>(*reinterpret_cast<TStripped *const *>(p_ptr)));
 	}
 
-	typedef Ref<T> EncodeT;
+	typedef Ref<TStripped> EncodeT;
 
-	_FORCE_INLINE_ static void encode(Ref<T> p_val, const void *p_ptr) {
-		// p_ptr points to an EncodeT object which is a Ref<T> object.
+	_FORCE_INLINE_ static void encode(Ref<TStripped> p_val, const void *p_ptr) {
+		// p_ptr points to an EncodeT object which is a Ref<TStripped> object.
 		*(const_cast<Ref<RefCounted> *>(reinterpret_cast<const Ref<RefCounted> *>(p_ptr))) = p_val;
-	}
-};
-
-template <class T>
-struct PtrToArg<const Ref<T> &> {
-	typedef Ref<T> EncodeT;
-
-	_FORCE_INLINE_ static Ref<T> convert(const void *p_ptr) {
-		if (p_ptr == nullptr) {
-			return Ref<T>();
-		}
-		// p_ptr points to a RefCounted object
-		return Ref<T>(*((T *const *)p_ptr));
 	}
 };
 
