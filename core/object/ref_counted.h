@@ -283,15 +283,10 @@ struct GetTypeInfo<T, EnableIf_t<types_are_same_v<Ref<typename RemoveRefPointerC
 };
 
 template <class T>
-struct VariantInternalAccessor<Ref<T>> {
-	static _FORCE_INLINE_ Ref<T> get(const Variant *v) { return Ref<T>(*VariantInternal::get_object(v)); }
-	static _FORCE_INLINE_ void set(Variant *v, const Ref<T> &p_ref) { VariantInternal::refcounted_object_assign(v, p_ref.ptr()); }
-};
-
-template <class T>
-struct VariantInternalAccessor<const Ref<T> &> {
-	static _FORCE_INLINE_ Ref<T> get(const Variant *v) { return Ref<T>(*VariantInternal::get_object(v)); }
-	static _FORCE_INLINE_ void set(Variant *v, const Ref<T> &p_ref) { VariantInternal::refcounted_object_assign(v, p_ref.ptr()); }
+struct VariantInternalAccessor<T, EnableIf_t<types_are_same_v<Ref<typename RemoveRefPointerConst_t<T>::Type>, RemoveRefPointerConst_t<T>>>> {
+	typedef Ref<typename RemoveRefPointerConst_t<T>::Type> RefStripped;
+	static _FORCE_INLINE_ RefStripped get(const Variant *v) { return RefStripped(*VariantInternal::get_object(v)); }
+	static _FORCE_INLINE_ void set(Variant *v, const RefStripped &p_ref) { VariantInternal::refcounted_object_assign(v, p_ref.ptr()); }
 };
 
 #endif // REF_COUNTED_H

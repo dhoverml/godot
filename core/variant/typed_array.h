@@ -58,14 +58,10 @@ public:
 };
 
 template <class T>
-struct VariantInternalAccessor<TypedArray<T>> {
-	static _FORCE_INLINE_ TypedArray<T> get(const Variant *v) { return *VariantInternal::get_array(v); }
-	static _FORCE_INLINE_ void set(Variant *v, const TypedArray<T> &p_array) { *VariantInternal::get_array(v) = p_array; }
-};
-template <class T>
-struct VariantInternalAccessor<const TypedArray<T> &> {
-	static _FORCE_INLINE_ TypedArray<T> get(const Variant *v) { return *VariantInternal::get_array(v); }
-	static _FORCE_INLINE_ void set(Variant *v, const TypedArray<T> &p_array) { *VariantInternal::get_array(v) = p_array; }
+struct VariantInternalAccessor<T, EnableIf_t<types_are_same_v<TypedArray<typename RemoveRefPointerConst_t<T>::Type>, RemoveRefPointerConst_t<T>>>> {
+	typedef RemoveRefPointerConst_t<T> TStripped;
+	static _FORCE_INLINE_ TStripped get(const Variant *v) { return *VariantInternal::get_array(v); }
+	static _FORCE_INLINE_ void set(Variant *v, const TStripped &p_array) { *VariantInternal::get_array(v) = p_array; }
 };
 
 template <class T>
